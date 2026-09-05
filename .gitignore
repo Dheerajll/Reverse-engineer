@@ -28,6 +28,9 @@ coverage.xml
 .hypothesis/
 
 # Distribution / packaging
+*.py[cod]
+*$py.class
+*.so
 .Python
 build/
 develop-eggs/
@@ -46,10 +49,23 @@ wheels/
 !pip-wheel-metadata/
 
 # IDEs
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Logs
+*.log
 
 # Environment
 .env
@@ -69,4 +85,12 @@ Thumbs.db
 htmlcov/
 .coverage
 .coverage.*
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
 ```
