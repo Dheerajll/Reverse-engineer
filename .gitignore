@@ -1,4 +1,13 @@
 ```
+# Build artifacts
+build/
+dist/
+
+# Reports and outputs
+report.json
+report.md
+output/
+
 # Python
 __pycache__/
 *.pyc
@@ -9,64 +18,28 @@ env/
 venv/
 .venv/
 .ENV
-.venv.bak/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-*.pot
-*.egg-info/
-.eggs/
-.pytest_cache/
-.mypy_cache/
-.hypothesis/
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg
-*.egg~
-!pip-wheel-metadata/
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Environment
 .env
 .env.local
-*.env.*
+.env.*
+.venv/
+.ENV/
+env/
 
-# Testing
-.tests/
-test/
-tests_output/
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Editors
+.vscode/
+.idea/
+
+# Coverage
+.coverage
+htmlcov/
+coverage/
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Coverage
-htmlcov/
-.coverage
-.coverage.*
 ```

@@ -102,8 +102,88 @@ class TechIntel:
         
         Extracts entities and relationships from claims.
         """
-        # TODO: Implement entity extraction and relationship mapping
-        pass
+        # Auto-extract entities from the query if no claims exist
+        if not result.claims:
+            # Parse query to identify potential entities
+            words = query.replace("?", "").replace(",", "").split()
+            
+            # Identify key technical terms (simplified heuristic)
+            tech_terms = []
+            skip_words = {"how", "does", "what", "is", "are", "the", "a", "an", "in", "on", "for", 
+                         "to", "of", "and", "or", "build", "design", "create", "make", "work"}
+            
+            i = 0
+            while i < len(words):
+                word = words[i].lower()
+                if word not in skip_words:
+                    # Check for multi-word terms
+                    if i + 1 < len(words) and words[i+1].lower() not in skip_words:
+                        term = f"{words[i]} {words[i+1]}"
+                        tech_terms.append(term)
+                        i += 2
+                    else:
+                        tech_terms.append(words[i])
+                        i += 1
+                else:
+                    i += 1
+            
+            # Create entities from identified terms
+            entity_types = {
+                "kubernetes": EntityType.SYSTEM,
+                "pod": EntityType.CONCEPT,
+                "scheduling": EntityType.ALGORITHM,
+                "rate limiter": EntityType.SYSTEM,
+                "distributed": EntityType.CONCEPT,
+                "cache": EntityType.SYSTEM,
+                "consensus": EntityType.ALGORITHM,
+                "websocket": EntityType.PROTOCOL,
+                "chat": EntityType.SYSTEM,
+                "real-time": EntityType.CONCEPT,
+                "api": EntityType.API,
+                "database": EntityType.SYSTEM,
+                "service": EntityType.SYSTEM,
+                "module": EntityType.CONCEPT,
+                "component": EntityType.CONCEPT,
+                "system": EntityType.SYSTEM,
+                "protocol": EntityType.PROTOCOL,
+                "algorithm": EntityType.ALGORITHM,
+            }
+            
+            for term in tech_terms[:10]:  # Limit to 10 entities
+                term_lower = term.lower()
+                entity_type = EntityType.CONCEPT
+                
+                # Match against known types
+                for keyword, etype in entity_types.items():
+                    if keyword in term_lower:
+                        entity_type = etype
+                        break
+                
+                # Also check query context for type hints
+                if "design" in query.lower() or "build" in query.lower():
+                    if entity_type == EntityType.CONCEPT:
+                        entity_type = EntityType.SYSTEM
+                
+                entity = Entity(
+                    name=term.title(),
+                    entity_type=entity_type,
+                    description=f"Key concept extracted from: {query}",
+                    attributes={"source": "query_analysis"}
+                )
+                self.knowledge_graph.add_entity(entity)
+                result.knowledge_graph.add_entity(entity)
+        
+        # Add relationships between consecutive entities
+        entities_list = list(result.knowledge_graph.entities.values())
+        for i in range(len(entities_list) - 1):
+            rel = Relationship(
+                source_entity_id=entities_list[i].id,
+                target_entity_id=entities_list[i+1].id,
+                relation_type="related_to",
+                description=f"Relationship derived from query context"
+            )
+            self.knowledge_graph.add_relationship(rel)
+            result.knowledge_graph.add_relationship(rel)
     
     def _detect_gaps(self, result: AnalysisResult, query: str) -> List[str]:
         """
@@ -111,24 +191,125 @@ class TechIntel:
         
         Identifies areas where more research is needed.
         """
-        # TODO: Implement gap detection based on query requirements
-        return []
+        gaps = []
+        
+        # Check if we have enough entities
+        if len(result.knowledge_graph.entities) < 3:
+            gaps.append("Limited entity extraction - consider providing more context or specific technical terms")
+        
+        # Check for missing evidence
+        if not result.claims:
+            gaps.append("No evidence-backed claims generated - connect to research sources for verification")
+        
+        # Query-specific gap detection
+        query_lower = query.lower()
+        if "distributed" in query_lower and "consensus" not in query_lower and "coordination" not in query_lower:
+            gaps.append("Distributed systems topic may need consensus/coordination mechanism details")
+        
+        if "security" not in query_lower and ("api" in query_lower or "service" in query_lower):
+            gaps.append("Security considerations not explicitly addressed")
+        
+        if "performance" not in query_lower and "scalability" not in query_lower:
+            if "system" in query_lower or "architecture" in query_lower:
+                gaps.append("Performance and scalability aspects may need exploration")
+        
+        return gaps
     
     def _generate_architecture(self, result: AnalysisResult, query: str) -> List[ArchitectureDiagram]:
         """
         Generate architecture diagrams from understanding.
         """
-        # TODO: Integrate with visualization module
-        # - Mermaid diagram generation
-        # - Excalidraw scene export
-        return []
+        diagrams = []
+        
+        # Generate a system context diagram based on entities
+        entities = list(result.knowledge_graph.entities.values())
+        
+        if entities:
+            # Create Mermaid graph from entities
+            mermaid_lines = ["graph TD"]
+            
+            for entity in entities:
+                node_id = entity.id.replace("-", "_")
+                label = entity.name.replace(" ", "_")
+                
+                # Style based on entity type
+                if entity.entity_type == EntityType.SYSTEM:
+                    mermaid_lines.append(f"    {node_id}[{label}]:::system")
+                elif entity.entity_type == EntityType.PROTOCOL:
+                    mermaid_lines.append(f"    {node_id}({label}):::protocol")
+                elif entity.entity_type == EntityType.ALGORITHM:
+                    mermaid_lines.append(f"    {node_id}{{{label}}}:::algorithm")
+                else:
+                    mermaid_lines.append(f"    {node_id}[{label}]")
+            
+            # Add relationships
+            for rel in result.knowledge_graph.relationships:
+                src_id = rel.source_entity_id.replace("-", "_")
+                tgt_id = rel.target_entity_id.replace("-", "_")
+                mermaid_lines.append(f"    {src_id} -- {rel.relation_type} --> {tgt_id}")
+            
+            # Add styles
+            mermaid_lines.extend([
+                "    classDef system fill:#e1f5fe,stroke:#01579b",
+                "    classDef protocol fill:#fff3e0,stroke:#e65100",
+                "    classDef algorithm fill:#f3e5f5,stroke:#4a148c",
+            ])
+            
+            diagrams.append(ArchitectureDiagram(
+                title="System Context",
+                diagram_type="mermaid",
+                content="\n".join(mermaid_lines),
+                description="High-level system architecture showing key components and relationships"
+            ))
+        
+        return diagrams
     
     def _generate_blueprint(self, result: AnalysisResult, query: str) -> Optional[Blueprint]:
         """
         Generate implementation blueprint.
         """
-        # TODO: Integrate with blueprint generator
-        return None
+        from src.blueprint.generator import BlueprintGenerator, Component as BPComponent
+        
+        gen = BlueprintGenerator()
+        
+        # Create components from entities
+        for entity in result.knowledge_graph.entities.values():
+            if entity.entity_type in [EntityType.SYSTEM, EntityType.API]:
+                comp = BPComponent(
+                    name=entity.name,
+                    description=entity.description,
+                    component_type=entity.entity_type.value,
+                    responsibilities=[f"Handle {entity.name.lower()} operations"],
+                    technology_stack=["Python", "asyncio"]
+                )
+                gen.add_component(comp)
+        
+        # If no components created, add a default one
+        if not gen.components:
+            default_name = query.split()[0].title() + "System"
+            comp = BPComponent(
+                name=default_name,
+                description=f"Main system for: {query}",
+                component_type="system",
+                responsibilities=["Core functionality", "API endpoints", "Data management"],
+                technology_stack=["Python", "FastAPI", "PostgreSQL", "Redis"]
+            )
+            gen.add_component(comp)
+        
+        # Generate test plans and risks
+        test_plans = gen.generate_test_plan()
+        risks = gen.identify_risks()
+        
+        # Create Blueprint object
+        blueprint = Blueprint(
+            title=f"Implementation Blueprint: {query}",
+            overview=f"Blueprint generated for: {query}",
+            components=[c.to_dict() for c in gen.components],
+            test_plan=[t.to_dict() for t in test_plans],
+            risks=[r.to_dict() for r in risks],
+        )
+        
+        return blueprint
     
     def add_source(self, source_type: str, **kwargs) -> Source:
         """Add a new information source to the platform."""
